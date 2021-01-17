@@ -19,7 +19,9 @@ public class GameManager : MonoBehaviour
     public GameObject LevelLockItemPrefab;
     public GameObject CoinsLockItemPrefab;
 
-
+    public GameObject OutfitObj;
+    public GameObject EyesObj;
+    public GameObject MouthObj;
 
     private void Awake()
     {
@@ -54,6 +56,7 @@ public class GameManager : MonoBehaviour
 
 
         var list = new List<GameObject>();
+
         for (int i=0; i< icons.Length && i< maxItems; i++)
         {
             var itemImage = images[i];
@@ -61,10 +64,10 @@ public class GameManager : MonoBehaviour
             var itemIcon = Array.Find(icons, image => image.name.Contains(itemId));
 
 
-            var itemStats = CheckItemStates(itemImage.name);
+            var itemStatus = CheckItemStates(itemImage.name);
             GameObject TempletPrefab;
 
-            switch (itemStats)
+            switch (itemStatus)
             {
                 case ItemStatus.Available:
                     TempletPrefab = ValidItemPrefab;
@@ -83,6 +86,8 @@ public class GameManager : MonoBehaviour
 
             var newItem = Instantiate(TempletPrefab, CustomizationGrid.transform);
             newItem.transform.localScale = Vector3.one;
+
+            newItem.GetComponent<Button>().onClick.AddListener(() => SetItem(type, itemImage, itemStatus));
 
             var itemInfo = newItem.AddComponent<ItemInfo>();
             itemInfo.Type = type;
@@ -105,6 +110,28 @@ public class GameManager : MonoBehaviour
 
 
         _customization.Add(type, list);
+    }
+
+    private void SetItem(CustomizationType type, Sprite itemImage, ItemStatus itemStats)
+    {
+        if(itemStats!= ItemStatus.Available)
+        {
+            return;
+        }
+
+        switch (type)
+        {
+            case CustomizationType.Outfits:
+                OutfitObj.GetComponent<SpriteRenderer>().sprite = itemImage;
+                break;
+            case CustomizationType.Eyes:
+                EyesObj.GetComponent<SpriteRenderer>().sprite = itemImage;
+                break;
+            case CustomizationType.Mouths:
+                MouthObj.GetComponent<SpriteRenderer>().sprite = itemImage;
+                break;
+
+        }
     }
 
     private ItemStatus CheckItemStates(string itemName)
@@ -130,6 +157,7 @@ public class GameManager : MonoBehaviour
         OnSectionButtonClick("Outfits");
     }
 
+    
 
     public void OnSectionButtonClick(string selectedSectionStr)
     {
