@@ -30,12 +30,18 @@ public class GameManager : MonoBehaviour
 
         _itemsData = ItemsDataGetter.GetItemsData();
         
-
         LoadItemsFromFolder(CustomizationType.Outfits, "Customization", "CustomizationIcons",10);
         LoadItemsFromFolder(CustomizationType.Eyes, "EyesCharacter", "EyesIcons",10);
         LoadItemsFromFolder(CustomizationType.Mouths, "MouthCharacter", "MouthIcons",10);
 
     }
+
+    void Start()
+    {
+        // defualt section 
+        OnSectionButtonClick("Outfits");
+    }
+
 
     private void UpdateUserState( UserData userData)
     {
@@ -57,12 +63,11 @@ public class GameManager : MonoBehaviour
 
         var list = new List<GameObject>();
 
-        for (int i=0; i< icons.Length && i< maxItems; i++)
+        for (int i=0; i< images.Length && i< maxItems; i++)
         {
             var itemImage = images[i];
-            var itemId = icons[i].name.Split('_')[1];
-            var itemIcon = Array.Find(icons, image => image.name.Contains(itemId));
-
+            var itemId = ExtractId(images[i].name);
+            var itemIcon = icons.First(icon => icon.name.Contains(itemId));
 
             var itemStatus = CheckItemStates(itemImage.name);
             GameObject TempletPrefab;
@@ -96,20 +101,38 @@ public class GameManager : MonoBehaviour
             itemInfo.Image = itemImage;
 
 
+            // Set icon & update the size base on icon sizes
             var iconSprite = newItem.transform.GetChild(0).GetComponent<Image>();
             var rectTransform = newItem.transform.GetChild(0).GetComponent<RectTransform>();
-
             rectTransform.sizeDelta = new Vector2(itemInfo.Icon.rect.width, itemInfo.Icon.rect.height);
-            iconSprite.sprite = icons[i];
+            iconSprite.sprite = itemIcon;
 
             newItem.SetActive(false);
-
 
             list.Add(newItem);
         }
 
 
         _customization.Add(type, list);
+    }
+
+    private string ExtractId(string name)
+    {
+        var arr = name.Split('_');
+        foreach(var str in arr)
+        {
+
+            if (str.All(char.IsDigit))
+            {
+                return str;
+            }
+
+
+        }
+
+        Debug.LogError($"File name: {name} is not contain id");
+        return "";
+
     }
 
     private void SetItem(CustomizationType type, Sprite itemImage, ItemStatus itemStats)
@@ -151,13 +174,6 @@ public class GameManager : MonoBehaviour
         return ItemStatus.Available;
 
     }
-
-    void Start()
-    {
-        OnSectionButtonClick("Outfits");
-    }
-
-    
 
     public void OnSectionButtonClick(string selectedSectionStr)
     {
