@@ -192,13 +192,6 @@ public class GameManager : MonoBehaviour
 
         _currentSelectedSection = newSelectedSection;
 
-
-
-    }
-
-    public void OnItemClick()
-    {
-        Debug.Log("OnItemClick: " + EventSystem.current.currentSelectedGameObject.name);
     }
 
 }
