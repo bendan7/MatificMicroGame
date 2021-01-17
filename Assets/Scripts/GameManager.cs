@@ -1,37 +1,160 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    void Start()
+    private Dictionary<string, ItemData> _itemsData;
+    private UserData _userData;
+    private CustomizationType _currentSelectedSection = CustomizationType.Outfits;
+    private Dictionary<CustomizationType, List<GameObject>> _customization = new Dictionary<CustomizationType, List<GameObject>>();
+
+    public GameObject CustomizationGrid;
+    public GameObject ValidItemPrefab;
+    public GameObject LevelLockItemPrefab;
+    public GameObject CoinsLockItemPrefab;
+
+
+
+    private void Awake()
     {
+        var userData = UserDataGetter.GetUserData();
+        UpdateUserState(userData);
+
+        _itemsData = ItemsDataGetter.GetItemsData();
         
+
+        LoadItemsFromFolder(CustomizationType.Outfits, "Customization", "CustomizationIcons",10);
+        LoadItemsFromFolder(CustomizationType.Eyes, "EyesCharacter", "EyesIcons",10);
+        LoadItemsFromFolder(CustomizationType.Mouths, "MouthCharacter", "MouthIcons",10);
+
     }
 
-    void Update()
+    private void UpdateUserState( UserData userData)
     {
-        /*
-        if (Input.GetButtonDown("Fire1"))
+        _userData = userData;
+        GameObject.Find("UserStateText").GetComponent<TextMeshProUGUI>().text = $"Level: {userData.Level}   Coins: {userData.Coins}";
+    }
+
+    private void LoadItemsFromFolder(CustomizationType type, string imagesPath, string iconsPath,int maxItems)
+    {
+        var icons = Resources.LoadAll<Sprite>(iconsPath);
+        var images = Resources.LoadAll<Sprite>(imagesPath);
+
+
+        if(icons.Length != images.Length)
         {
-            
-
-            var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            //RaycastHit hit;
-
-            Debug.Log(ray.origin);
-
-            RaycastHit2D hit = Physics2D.Raycast(ray.origin, -Vector2.up);
-            if (true)
-            {
-                
-                Debug.Log(hit.transform.name);
-
-
-            }
+            Debug.LogError("Icons and Imges Folders is not match");
         }
-         */
 
+
+        var list = new List<GameObject>();
+        for (int i=0; i< icons.Length && i< maxItems; i++)
+        {
+            var itemImage = images[i];
+            var itemId = icons[i].name.Split('_')[1];
+            var itemIcon = Array.Find(icons, image => image.name.Contains(itemId));
+
+
+            var itemStats = CheckItemStates(itemImage.name);
+            GameObject TempletPrefab;
+
+            switch (itemStats)
+            {
+                case ItemStatus.Available:
+                    TempletPrefab = ValidItemPrefab;
+                    break;
+                case ItemStatus.PendingPurchase:
+                    TempletPrefab = CoinsLockItemPrefab;
+                    break;
+                case ItemStatus.LockByLevel:
+                    TempletPrefab = LevelLockItemPrefab;
+                    break;
+
+                default:
+                    TempletPrefab = ValidItemPrefab;
+                    break;
+            }
+
+            var newItem = Instantiate(TempletPrefab, CustomizationGrid.transform);
+            newItem.transform.localScale = Vector3.one;
+
+            var itemInfo = newItem.AddComponent<ItemInfo>();
+            itemInfo.Type = type;
+            itemInfo.id = itemId;
+            itemInfo.Icon = itemIcon;
+            itemInfo.Image = itemImage;
+
+
+            var iconSprite = newItem.transform.GetChild(0).GetComponent<Image>();
+            var rectTransform = newItem.transform.GetChild(0).GetComponent<RectTransform>();
+
+            rectTransform.sizeDelta = new Vector2(itemInfo.Icon.rect.width, itemInfo.Icon.rect.height);
+            iconSprite.sprite = icons[i];
+
+            newItem.SetActive(false);
+
+
+            list.Add(newItem);
+        }
+
+
+        _customization.Add(type, list);
+    }
+
+    private ItemStatus CheckItemStates(string itemName)
+    {
+        var itemData =  _itemsData[itemName];
+
+        if(itemData.MinLevel > _userData.Level)
+        {
+            return ItemStatus.LockByLevel;
+        }
+
+        if (itemData.Price > 0)
+        {
+            return ItemStatus.PendingPurchase;
+        }
+
+        return ItemStatus.Available;
+
+    }
+
+    void Start()
+    {
+        OnSectionButtonClick("Outfits");
+    }
+
+
+    public void OnSectionButtonClick(string selectedSectionStr)
+    {
+        var newSelectedSection = (CustomizationType)Enum.Parse(typeof (CustomizationType), selectedSectionStr);
+
+        foreach (var item in _customization[_currentSelectedSection])
+        {
+            item.SetActive(false);
+        }
+
+        foreach (var item in _customization[newSelectedSection])
+        {
+            item.SetActive(true);
+        }
+
+
+        _currentSelectedSection = newSelectedSection;
+
+
+
+    }
+
+    public void OnItemClick()
+    {
+        Debug.Log("OnItemClick: " + EventSystem.current.currentSelectedGameObject.name);
     }
 
 }
