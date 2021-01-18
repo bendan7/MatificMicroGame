@@ -38,10 +38,9 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
-        // defualt section 
+        // defualt selected section 
         OnSectionButtonClick("Outfits");
     }
-
 
     private void UpdateUserState( UserData userData)
     {
@@ -49,7 +48,7 @@ public class GameManager : MonoBehaviour
         GameObject.Find("UserStateText").GetComponent<TextMeshProUGUI>().text = $"Level: {userData.Level}   Coins: {userData.Coins}";
     }
 
-    private void LoadItemsFromFolder(CustomizationType type, string imagesPath, string iconsPath,int maxItems)
+    private void LoadItemsFromFolder(CustomizationType type, string imagesPath, string iconsPath ,int maxItemsToLoad)
     {
         var icons = Resources.LoadAll<Sprite>(iconsPath);
         var images = Resources.LoadAll<Sprite>(imagesPath);
@@ -61,59 +60,72 @@ public class GameManager : MonoBehaviour
         }
 
 
-        var list = new List<GameObject>();
+        var listOfItems = new List<GameObject>();
 
-        for (int i=0; i< images.Length && i< maxItems; i++)
+        for (int i=0; i< images.Length && i< maxItemsToLoad; i++)
         {
-            var itemImage = images[i];
-            var itemId = ExtractId(images[i].name);
-            var itemIcon = icons.First(icon => icon.name.Contains(itemId));
+            Sprite itemImage = images[i];
+            string itemId = ExtractId(images[i].name);
+            Sprite itemIcon = icons.First(icon => icon.name.Contains(itemId));
 
-            var itemStatus = CheckItemStates(itemImage.name);
-            GameObject TempletPrefab;
+            ItemStatus itemStatus = CheckItemStates(itemImage.name);
 
-            switch (itemStatus)
-            {
-                case ItemStatus.Available:
-                    TempletPrefab = ValidItemPrefab;
-                    break;
-                case ItemStatus.PendingPurchase:
-                    TempletPrefab = CoinsLockItemPrefab;
-                    break;
-                case ItemStatus.LockByLevel:
-                    TempletPrefab = LevelLockItemPrefab;
-                    break;
+            GameObject newItem = CreateNewItem(type, itemImage, itemId, itemIcon, itemStatus);
 
-                default:
-                    TempletPrefab = ValidItemPrefab;
-                    break;
-            }
-
-            var newItem = Instantiate(TempletPrefab, CustomizationGrid.transform);
-            newItem.transform.localScale = Vector3.one;
-
-            newItem.GetComponent<Button>().onClick.AddListener(() => SetItem(type, itemImage, itemStatus));
-
-            var itemInfo = newItem.AddComponent<ItemInfo>();
-            itemInfo.Type = type;
-            itemInfo.id = itemId;
-            itemInfo.Icon = itemIcon;
-            itemInfo.Image = itemImage;
-
-
-            // Set icon & update the size base on icon sizes
-            var iconSprite = newItem.transform.GetChild(0).GetComponent<Image>();
-            var rectTransform = newItem.transform.GetChild(0).GetComponent<RectTransform>();
-            rectTransform.sizeDelta = new Vector2(itemInfo.Icon.rect.width, itemInfo.Icon.rect.height);
-            iconSprite.sprite = itemIcon;
-
-            newItem.SetActive(false);
-
-            list.Add(newItem);
+            listOfItems.Add(newItem);
         }
 
 
-        _customization.Add(type, list);
+        _customization.Add(type, listOfItems);
+    }
+
+    private GameObject CreateNewItem(CustomizationType type, Sprite itemImage, string itemId, Sprite itemIcon, ItemStatus itemStatus)
+    {
+        GameObject newItem;
+
+        switch (itemStatus)
+        {
+            case ItemStatus.Available:
+                newItem = Instantiate(ValidItemPrefab, CustomizationGrid.transform);
+                break;
+
+            case ItemStatus.PendingPurchase:
+                newItem = Instantiate(CoinsLockItemPrefab, CustomizationGrid.transform);
+                var price = _itemsData[itemImage.name].Price.ToString();
+                newItem.transform.GetComponentInChildren<TextMeshProUGUI>().text = price;
+                break;
+
+            case ItemStatus.LockByLevel:
+                newItem = Instantiate(LevelLockItemPrefab, CustomizationGrid.transform);
+                var minLevel = _itemsData[itemImage.name].MinLevel.ToString();
+                newItem.transform.GetComponentInChildren<TextMeshProUGUI>().text = minLevel;
+                break;
+
+            default:
+                newItem = Instantiate(ValidItemPrefab, CustomizationGrid.transform);
+                break;
+        }
+
+        newItem.transform.localScale = Vector3.one;
+
+        newItem.GetComponent<Button>().onClick.AddListener(() => SetItemOnCharacter(type, itemImage, itemStatus));
+
+        var itemInfo = newItem.AddComponent<ItemInfo>();
+        itemInfo.Type = type;
+        itemInfo.id = itemId;
+        itemInfo.Icon = itemIcon;
+        itemInfo.Image = itemImage;
+
+
+        // Set icon & update the size base on icon sizes
+        var iconSprite = newItem.transform.GetChild(0).GetComponent<Image>();
+        var rectTransform = newItem.transform.GetChild(0).GetComponent<RectTransform>();
+        rectTransform.sizeDelta = new Vector2(itemInfo.Icon.rect.width, itemInfo.Icon.rect.height);
+        iconSprite.sprite = itemIcon;
+
+
+        newItem.SetActive(false);
+        return newItem;
     }
 
     private string ExtractId(string name)
@@ -135,7 +147,7 @@ public class GameManager : MonoBehaviour
 
     }
 
-    private void SetItem(CustomizationType type, Sprite itemImage, ItemStatus itemStats)
+    private void SetItemOnCharacter(CustomizationType type, Sprite itemImage, ItemStatus itemStats)
     {
         if(itemStats!= ItemStatus.Available)
         {

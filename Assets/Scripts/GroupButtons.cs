@@ -15,14 +15,17 @@ public class GroupButtons : MonoBehaviour
     void Start()
     {
         buttons  = GetComponentsInChildren<Button>();
-        //buttons[1].interactable = false;
+
+        foreach(var button in buttons)
+        {
+            button.onClick.AddListener(()=> OnClickButtonInGroup());
+        }
     }
 
 
     public void OnClickButtonInGroup()
     {
 
-        
         var clickedButton = EventSystem.current.currentSelectedGameObject.GetComponent<Button>();
         
         foreach ( var button in buttons)
